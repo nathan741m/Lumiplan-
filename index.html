@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Girouette Bus</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+}
+
+/* Pages */
+.page { display: none; padding: 20px; }
+.active { display: block; }
+
+/* Accueil */
+.center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+input, button {
+    padding: 10px;
+    margin: 5px;
+}
+
+/* Girouette */
+.screen {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+}
+
+/* Haut */
+.top {
+    color: red;
+    font-weight: bold;
+}
+
+/* Ligne arrêts */
+.line-container {
+    position: relative;
+    margin: 40px 0;
+}
+
+.line {
+    height: 3px;
+    background: black;
+}
+
+.stop {
+    position: absolute;
+    transform: translateX(-50%);
+    text-align: center;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    background: black;
+    border-radius: 50%;
+    margin: auto;
+}
+
+.triangle {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 12px solid red;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    top: -6px;
+    transition: left 0.5s;
+}
+
+/* Texte principal */
+.big {
+    font-size: 30px;
+    font-weight: bold;
+}
+
+/* Footer */
+.footer {
+    margin-top: 40px;
+    font-size: 14px;
+}
+
+/* Scroll texte */
+.scroll {
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.scroll span {
+    display: inline-block;
+    padding-left: 100%;
+    animation: scroll 10s linear infinite;
+}
+
+@keyframes scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+}
+
+/* Réglages */
+.settings input {
+    width: 100%;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ACCUEIL -->
+<div id="home" class="page active center">
+    <h2>Entrer le code</h2>
+    <input type="text" id="codeInput">
+    <button onclick="checkCode()">Valider</button>
+</div>
+
+<!-- GESTION -->
+<div id="settings" class="page settings">
+    <h2>Réglages</h2>
+
+    <h3>Ligne</h3>
+    <input id="line" placeholder="Numéro ligne">
+    <input id="destination" placeholder="Destination">
+    <input id="direction" placeholder="Direction">
+
+    <h3>Arrêts</h3>
+    <div id="stopsList"></div>
+    <button onclick="addStop()">Ajouter arrêt</button>
+
+    <h3>Position actuelle</h3>
+    <input type="number" id="currentIndex">
+
+    <h3>GPS</h3>
+    <button onclick="useGPS()">Utiliser ma position</button>
+
+    <br><br>
+    <button onclick="save()">Sauvegarder</button>
+    <button onclick="go('display')">Voir affichage</button>
+</div>
+
+<!-- AFFICHAGE -->
+<div id="display" class="page">
+    <div class="screen">
+        <div class="top" id="topText"></div>
+
+        <div class="line-container">
+            <div class="line"></div>
+            <div id="stops"></div>
+            <div class="triangle" id="triangle"></div>
+        </div>
+
+        <div class="big scroll">
+            <span id="nextStopText"></span>
+        </div>
+
+        <div class="footer">
+            LA MOBILITÉ DE MACS<br>
+            yégo<br>
+            www.yego.fr<br>
+            Application yégo<br>
+            @yego.macs
+        </div>
+    </div>
+</div>
+
+<!-- TEST -->
+<div id="test" class="page">
+    <h2>Mode test</h2>
+    <div id="testRender"></div>
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("busData")) || {
+    line: "001A",
+    destination: "LABENNE - ST VINCENT DE TYROSSE",
+    direction: "Vers ST VINCENT DE TYROSSE - LYCEE",
+    stops: ["LABENNE", "CAPBRETON", "BENESSE", "TYROSSE"],
+    currentIndex: 0
+};
+
+function save() {
+    data.line = document.getElementById("line").value;
+    data.destination = document.getElementById("destination").value;
+    data.direction = document.getElementById("direction").value;
+    data.currentIndex = parseInt(document.getElementById("currentIndex").value);
+
+    localStorage.setItem("busData", JSON.stringify(data));
+    alert("Sauvegardé !");
+}
+
+function loadSettings() {
+    document.getElementById("line").value = data.line;
+    document.getElementById("destination").value = data.destination;
+    document.getElementById("direction").value = data.direction;
+    document.getElementById("currentIndex").value = data.currentIndex;
+
+    renderStopsList();
+}
+
+function renderStopsList() {
+    let container = document.getElementById("stopsList");
+    container.innerHTML = "";
+
+    data.stops.forEach((stop, i) => {
+        let div = document.createElement("div");
+        div.innerHTML = `
+            <input value="${stop}" onchange="updateStop(${i}, this.value)">
+            <button onclick="removeStop(${i})">❌</button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function addStop() {
+    data.stops.push("Nouvel arrêt");
+    renderStopsList();
+}
+
+function removeStop(i) {
+    data.stops.splice(i, 1);
+    renderStopsList();
+}
+
+function updateStop(i, val) {
+    data.stops[i] = val;
+}
+
+function renderDisplay() {
+    document.getElementById("topText").innerText =
+        `${data.line} ${data.destination}\n${data.direction}`;
+
+    let stopsDiv = document.getElementById("stops");
+    stopsDiv.innerHTML = "";
+
+    let width = 100 / (data.stops.length - 1);
+
+    data.stops.forEach((stop, i) => {
+        let div = document.createElement("div");
+        div.className = "stop";
+        div.style.left = `${i * width}%`;
+        div.innerHTML = `<div>${stop}</div><div class="dot"></div>`;
+        stopsDiv.appendChild(div);
+    });
+
+    let triangle = document.getElementById("triangle");
+    triangle.style.left = `${data.currentIndex * width}%`;
+
+    let next = data.stops[data.currentIndex + 1] || "Terminus";
+    document.getElementById("nextStopText").innerText =
+        "Prochain arrêt : " + next;
+}
+
+function checkCode() {
+    let code = document.getElementById("codeInput").value;
+
+    if (code === "1953") {
+        go("settings");
+        loadSettings();
+    } else if (code === "girouette") {
+        go("display");
+        renderDisplay();
+    } else if (code === "0000") {
+        go("test");
+        renderDisplay();
+        document.getElementById("testRender").innerHTML =
+            document.getElementById("display").innerHTML;
+    }
+}
+
+function go(page) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById(page).classList.add("active");
+}
+
+function useGPS() {
+    navigator.geolocation.getCurrentPosition(pos => {
+        alert("Position détectée (simulation)");
+        data.currentIndex = Math.floor(Math.random() * data.stops.length);
+        document.getElementById("currentIndex").value = data.currentIndex;
+    });
+}
+</script>
+
+</body>
+</html>
