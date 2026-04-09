@@ -9,7 +9,7 @@
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: #f4f4f4;
+    background: #f2f2f2;
 }
 
 /* Pages */
@@ -20,38 +20,43 @@ body {
 .center {
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     height: 100vh;
 }
 
 input, button {
-    padding: 10px;
-    margin: 5px;
+    padding: 12px;
+    margin: 8px;
+    font-size: 16px;
+    width: 260px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
 }
 
-/* Girouette */
+/* Écran */
 .screen {
     background: white;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 0 25px rgba(0,0,0,0.2);
 }
 
 /* Haut */
 .top {
     color: red;
     font-weight: bold;
+    white-space: pre-line;
 }
 
-/* Ligne arrêts */
+/* Ligne */
 .line-container {
     position: relative;
-    margin: 40px 0;
+    margin: 50px 0;
 }
 
 .line {
-    height: 3px;
+    height: 4px;
     background: black;
 }
 
@@ -59,6 +64,7 @@ input, button {
     position: absolute;
     transform: translateX(-50%);
     text-align: center;
+    font-size: 12px;
 }
 
 .dot {
@@ -73,26 +79,20 @@ input, button {
     position: absolute;
     width: 0;
     height: 0;
-    border-left: 12px solid red;
-    border-top: 8px solid transparent;
-    border-bottom: 8px solid transparent;
-    top: -6px;
-    transition: left 0.5s;
+    border-left: 14px solid red;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    top: -7px;
+    transition: left 0.5s ease;
 }
 
 /* Texte principal */
 .big {
-    font-size: 30px;
+    font-size: 28px;
     font-weight: bold;
 }
 
-/* Footer */
-.footer {
-    margin-top: 40px;
-    font-size: 14px;
-}
-
-/* Scroll texte */
+/* Scroll */
 .scroll {
     overflow: hidden;
     white-space: nowrap;
@@ -101,7 +101,7 @@ input, button {
 .scroll span {
     display: inline-block;
     padding-left: 100%;
-    animation: scroll 10s linear infinite;
+    animation: scroll 8s linear infinite;
 }
 
 @keyframes scroll {
@@ -109,9 +109,10 @@ input, button {
     to { transform: translateX(-100%); }
 }
 
-/* Réglages */
-.settings input {
-    width: 100%;
+/* Footer */
+.footer {
+    margin-top: 40px;
+    font-size: 13px;
 }
 </style>
 </head>
@@ -122,14 +123,13 @@ input, button {
 <div id="home" class="page active center">
     <h2>Entrer le code</h2>
     <input type="text" id="codeInput">
-    <button onclick="checkCode()">Valider</button>
+    <button id="validateBtn">Valider</button>
 </div>
 
-<!-- GESTION -->
-<div id="settings" class="page settings">
+<!-- RÉGLAGES -->
+<div id="settings" class="page">
     <h2>Réglages</h2>
 
-    <h3>Ligne</h3>
     <input id="line" placeholder="Numéro ligne">
     <input id="destination" placeholder="Destination">
     <input id="direction" placeholder="Direction">
@@ -146,7 +146,7 @@ input, button {
 
     <br><br>
     <button onclick="save()">Sauvegarder</button>
-    <button onclick="go('display')">Voir affichage</button>
+    <button onclick="go('display'); renderDisplay();">Voir affichage</button>
 </div>
 
 <!-- AFFICHAGE -->
@@ -181,13 +181,58 @@ input, button {
 </div>
 
 <script>
+// DATA
 let data = JSON.parse(localStorage.getItem("busData")) || {
     line: "001A",
-    destination: "LABENNE - ST VINCENT DE TYROSSE",
-    direction: "Vers ST VINCENT DE TYROSSE - LYCEE",
+    destination: "LABENNE - TYROSSE",
+    direction: "Vers TYROSSE",
     stops: ["LABENNE", "CAPBRETON", "BENESSE", "TYROSSE"],
     currentIndex: 0
 };
+
+// NAVIGATION
+function go(page) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById(page).classList.add("active");
+}
+
+// LOGIN
+document.getElementById("validateBtn").addEventListener("click", checkCode);
+
+document.getElementById("codeInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter") checkCode();
+});
+
+function checkCode() {
+    let code = document.getElementById("codeInput").value.trim();
+
+    if (code === "1953") {
+        go("settings");
+        loadSettings();
+    } 
+    else if (code === "girouette") {
+        go("display");
+        renderDisplay();
+    } 
+    else if (code === "0000") {
+        go("test");
+        renderDisplay();
+        document.getElementById("testRender").innerHTML =
+            document.getElementById("display").innerHTML;
+    } 
+    else {
+        alert("Code incorrect ❌");
+    }
+}
+
+// SETTINGS
+function loadSettings() {
+    document.getElementById("line").value = data.line;
+    document.getElementById("destination").value = data.destination;
+    document.getElementById("direction").value = data.direction;
+    document.getElementById("currentIndex").value = data.currentIndex;
+    renderStopsList();
+}
 
 function save() {
     data.line = document.getElementById("line").value;
@@ -199,15 +244,6 @@ function save() {
     alert("Sauvegardé !");
 }
 
-function loadSettings() {
-    document.getElementById("line").value = data.line;
-    document.getElementById("destination").value = data.destination;
-    document.getElementById("direction").value = data.direction;
-    document.getElementById("currentIndex").value = data.currentIndex;
-
-    renderStopsList();
-}
-
 function renderStopsList() {
     let container = document.getElementById("stopsList");
     container.innerHTML = "";
@@ -215,8 +251,8 @@ function renderStopsList() {
     data.stops.forEach((stop, i) => {
         let div = document.createElement("div");
         div.innerHTML = `
-            <input value="${stop}" onchange="updateStop(${i}, this.value)">
-            <button onclick="removeStop(${i})">❌</button>
+            <input value="${stop}" onchange="data.stops[${i}] = this.value">
+            <button onclick="data.stops.splice(${i},1); renderStopsList()">❌</button>
         `;
         container.appendChild(div);
     });
@@ -227,18 +263,10 @@ function addStop() {
     renderStopsList();
 }
 
-function removeStop(i) {
-    data.stops.splice(i, 1);
-    renderStopsList();
-}
-
-function updateStop(i, val) {
-    data.stops[i] = val;
-}
-
+// AFFICHAGE
 function renderDisplay() {
     document.getElementById("topText").innerText =
-        `${data.line} ${data.destination}\n${data.direction}`;
+        data.line + " " + data.destination + "\n" + data.direction;
 
     let stopsDiv = document.getElementById("stops");
     stopsDiv.innerHTML = "";
@@ -248,47 +276,30 @@ function renderDisplay() {
     data.stops.forEach((stop, i) => {
         let div = document.createElement("div");
         div.className = "stop";
-        div.style.left = `${i * width}%`;
+        div.style.left = (i * width) + "%";
         div.innerHTML = `<div>${stop}</div><div class="dot"></div>`;
         stopsDiv.appendChild(div);
     });
 
-    let triangle = document.getElementById("triangle");
-    triangle.style.left = `${data.currentIndex * width}%`;
+    document.getElementById("triangle").style.left =
+        (data.currentIndex * width) + "%";
 
-    let next = data.stops[data.currentIndex + 1] || "Terminus";
+    let next = data.stops[data.currentIndex + 1] || "TERMINUS";
     document.getElementById("nextStopText").innerText =
         "Prochain arrêt : " + next;
 }
 
-function checkCode() {
-    let code = document.getElementById("codeInput").value;
-
-    if (code === "1953") {
-        go("settings");
-        loadSettings();
-    } else if (code === "girouette") {
-        go("display");
-        renderDisplay();
-    } else if (code === "0000") {
-        go("test");
-        renderDisplay();
-        document.getElementById("testRender").innerHTML =
-            document.getElementById("display").innerHTML;
-    }
-}
-
-function go(page) {
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-    document.getElementById(page).classList.add("active");
-}
-
+// GPS
 function useGPS() {
-    navigator.geolocation.getCurrentPosition(pos => {
-        alert("Position détectée (simulation)");
-        data.currentIndex = Math.floor(Math.random() * data.stops.length);
-        document.getElementById("currentIndex").value = data.currentIndex;
-    });
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(() => {
+            data.currentIndex = Math.floor(Math.random() * data.stops.length);
+            document.getElementById("currentIndex").value = data.currentIndex;
+            alert("Position simulée !");
+        });
+    } else {
+        alert("GPS non disponible");
+    }
 }
 </script>
 
